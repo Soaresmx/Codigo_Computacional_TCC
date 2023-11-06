@@ -72,7 +72,7 @@ output_4 = x_4(2:end,4);
 
 % Definindo o tamanho da janela do filtro, este valor é de escolha do
 % usuário.
-no = 100; 
+no = 50; 
 
 % Criação do filtro de Média Móvel para o primeiro ensaio.
 filtro1 = ones(1, no) / no;
@@ -108,6 +108,7 @@ figure (2)
 subplot(4,1,1)
 hold on;
 title(['Sinal para identificação c/ filtro média móvel utilizando-se uma janela de ' num2str(no) ' amostras']);
+%title (['Sinal para identificação'])
 plot(timeStamp_1,input_1)
 plot(timeStamp_1,output_1)
 legend('Sin. entrada','Sin. saida');
@@ -116,6 +117,7 @@ hold off;
 subplot(4,1,2)
 hold on;
 title (['Modelo aux 1 c/ filtro média móvel utilizando-se uma janela de ' num2str(no) ' amostras']);
+%title (['Modelo aux 1'])
 plot(timeStamp_2,input_2)
 plot(timeStamp_2,output_2)
 legend('Sin. entrada','Sin. saida');
@@ -124,6 +126,7 @@ hold off;
 subplot(4,1,3)
 hold on;
 title (['Modelo aux 2 c/ filtro média móvel utilizando-se uma janela de ' num2str(no) ' amostras']);
+%title (['Modelo aux 2'])
 plot(timeStamp_3,input_3)
 plot(timeStamp_3,output_3)
 legend('Sin. entrada','Sin. saida');
@@ -132,12 +135,11 @@ hold off;
 subplot(4,1,4)
 hold on;
 title (['Modelo aux 3 c/ filtro média móvel utilizando-se uma janela de ' num2str(no) ' amostras']);
+%title (['Modelo aux 3'])
 plot(timeStamp_4,input_4)
 plot(timeStamp_4,output_4)
 legend('Sin. entrada','Sin. saida');
 hold off;
-
-
 
 %% Plot das Taxas de Amostragem: Ts, em formato de Histograma.
 
@@ -150,9 +152,11 @@ subplot(4,1,1);
 histogram(sample_times_1);
 title('Experimento 1');
 
+
 subplot(4,1,2)
 histogram(sample_times_2);
 title('Experimento 2');
+
 
 subplot(4,1,3)
 histogram(sample_times_2);
@@ -161,6 +165,7 @@ title('Experimento 3');
 subplot(4,1,4)
 histogram(sample_times_2);
 title('Experimento 4');
+
 
 % Backup com os dados do experimento 
 %save experimento 
@@ -221,7 +226,7 @@ for i=1:length(npnz)
     % Calcula o MSE, referente a cada modelo:
     fit_y1(i,1)=npnz(i,1);
     fit_y1(i,2)=npnz(i,2);
-    fit_y1(i,3)=goodnessOfFit(y1_val.y, data_y_val.y,modo)
+    fit_y1(i,3)=goodnessOfFit(y1_val.y, data_y_val.y,modo);
 
     fit_y2(i,1)=npnz(i,1);
     fit_y2(i,2)=npnz(i,2);
@@ -271,7 +276,7 @@ best_Y.Name='Modelo';
 step(best_Y,0:1000)
 [C_sys_1, info_1] = pidtune(best_Y,'PID')
 
-%% Técnica para diminuição da FT, o que deve melhorar a estabilidade do sistema.  
+%% Técnica para diminuição da FT.  
 
 pid1 = reduce(best_Y,(bestNZ_1));
 [num_pid1,den_pid1] = ss2tf(pid1.A,pid1.B,pid1.C,pid1.D);
@@ -279,6 +284,21 @@ pid1 = tf(num_pid1,den_pid1)
 step(pid1,-10:0.5:1000)
 [C_sys_11, info_11] = pidtune(pid1,'PI')
 
+%% Determinaçãos dos Parâmetros de Ganho crítico e Período crtítico para ZN (segundo método). 
+clc; 
+
+Kcr = margin(best_Y.Numerator,best_Y.Denominator);
+r  = rlocus(best_Y.Numerator,best_Y.Denominator,Kcr);
+rlo = fix(real(rlocus(best_Y.Numerator,best_Y.Denominator,Kcr))/.1e-6);
+Fre = find(rlo == 0);
+Im = imag(r(Fre));
+
+% Dados obtidos para a sintonia de ZN (Segundo Método). 
+w = Im(1)
+Pcr = 2*pi/w
+
+%Plot Root Locus
+rlocus(best_Y.Numerator,best_Y.Denominator) 
 %% Checagem da melhor combinação de polos e zeros do exper 2
 
 [MSE2,identf_2] = min(fit_y2(:,3));
@@ -384,10 +404,10 @@ pid4 = tf(num_pid4,den_pid4)
 step(pid4,-10:0.5:500)
 [C_sys_44, info_44] = pidtune(pid4,'PID')
 
-%save resultados_sintonias
+%save resultados
 %% Exibição de todos os parâmetros encontrados de sintonia de PID
 
-%load ("resultados_sintonias.mat")
+%load ("resultados.mat")
 C_sys_1, %info_1
 C_sys_2, %info_2
 C_sys_3, %info_3
@@ -395,7 +415,7 @@ C_sys_4, %info_4
 
 %% Exibição de todos os parâmetros encontrados de sintonia de PID c/ redução da FT.
 
-%load ("resultados_sintonias.mat")
+%load ("resultados.mat")
 C_sys_11, %info_1
 C_sys_22, %info_2
 C_sys_33, %info_3
@@ -440,7 +460,7 @@ xlabel('Tempo');
 
 subplot(4,1,3)
 %hold on;
-compare(data_y_mod2,best_Y,'b')
+compare(data_y_mod2,best_Y33,'b')
 title('');
 xlabel('Tempo');
 %hold off;
@@ -591,175 +611,3 @@ OUT2(:,2) = best_Y1.Denominator;
 
 writematrix(OUT2, "FT_ident_Planta.csv");
 
-
-
-%% Identificação Utilizando do Critério PRBS
-
-clear OUT
-
-OUT(:,1) = input_1;
-OUT(:,2) = output_1;
-OUT(:,3) = Ts;
-
-writematrix(OUT,"Sinal_PRBS.csv");
-
-SIGNAL = load("Sinal_PRBS.csv");  % Carrega o vetor de entrada da probe 1
-
-% Pré-definições do modelo
-
-u = SIGNAL(:,1);
-y = SIGNAL(:,2);
-
-% Aplique o filtro ao sinal
-%y = lowpass(y1,0.00001);
-
-N = length(u);          % Leitura do tamanho do vetor de entrada
-
-Ts = 0.01;
-
-t = Ts:Ts:Ts*N;              % Vetor de tempo
-
-% % % % % % ENTRADAS DO MODELO % % % % % % % % % %
-
-nRI = 3;                 % Quantidade de Regressores na Entrada
-nRO = 1;                 % Quantidade de Regressores na Saida
-nRR = 5;                 % Quantidade de Regressores de Resíduo
-p_max = -1;           % Número de Iterações Máximas
-RMSE_min = 0.05;         % MSE mínimo aceitável
-
-% % % % % % % Cálculo da Matriz PSI % % % % % %
-
-% Maior regressor
-if(nRI>nRO)
-    if(nRI>nRR)
-        M = nRI + 1;
-    else
-        M = nRR + 1;
-    end
-else
-    if(nRO>nRR)
-        M = nR0 + 1;
-    else
-        M = nRR + 1;
-    end
-end
-
-% Cálculo do vetor Y
-Y = y(M:(N));
-
-% Condicoes Iniciais de PSI (primeiro regressor de saída)
-PSI = y(M-1:N-1);
-
-% Adiciona colunas no vetor conforme a quantidade de regressores na saida
-for i=2:nRO
-    PSI = [PSI y((M-i):(N-i))];
-end
-
-% Adiciona colunas no vetor conforme a quantidade de regressores na entrada
-for i=1:nRI
-    PSI = [PSI u((M-i):(N-i))];
-end
-
-% % % % % Cálculo dos Parâmetros e Saída Inicial % % % % % % % % % % % % %
-
-% Cálculo dos parâmetros do modelo
-O = pinv(PSI) * Y;
-
-% Cálculo da Saída
-YH = PSI * O;
-
-% Cálculo do Resíduo
-RE = [zeros(M-1, 1); (Y-YH)];
-
-% Cálculo da Matriz do Resíduo
-PSI_RE = RE((M-1):(N-1));
-for i=2:nRR
-    PSI_RE = [PSI_RE RE((M-i):(N-i))];
-end
-
-% Cálculado do MSE E RMSE
-MSE = 0;
-for i=1:(N-M+1)
-    MSE = MSE +  (Y(i)-YH(i))*(Y(i)-YH(i));
-end
-RMSE = sqrt(MSE/N);
-
-% Iterador
-p=0;
-
-while (RMSE > RMSE_min) && (p <= p_max)
-
-    % Cálculo de PSI extendida
-    PSI_EXT = [PSI PSI_RE];
-
-    % Cálculo dos parâmetros do modelo
-    O = pinv(PSI_EXT) * Y;
-
-    % Cálculo da Saída
-    YH = PSI_EXT * O;
-
-    % Cálculo do Resíduo
-    RE = [zeros(M-1, 1); (Y-YH)];
-
-    % Cálculo da Matriz do Resíduo
-    PSI_RE = RE((M-1):(N-1));
-    for i=2:nRR
-        PSI_RE = [PSI_RE RE((M-i):(N-i))];
-    end
-
-    % Cálculado do MSE E RMSE
-    MSE = 0;
-    for i=1:(N-M+1)
-        MSE = MSE +  (Y(i)-YH(i))*(Y(i)-YH(i));
-    end
-    RMSE = sqrt(MSE/N);
-
-    % Iteração
-    p = p+1;
-
-end
-
-% Atribuindo as Condições Iniciais
-YH = [y(1:M-1);YH];
-
-fprintf("Menor RMSE encontrado: %.6f\nNumero de Iterações: %d\n\n", RMSE, p);
-
-% % % % % % % % % % % % % GRAFICOS % % % % % % % % % % % % % % % % % % % %
-
-
-% Primeiro Grafico (Entrada u(i))
-subplot(2,2,1);
-plot(t,u)                                           % Plot da tensão de entrada
-title("Entrada");                                   % Titulo do grafico
-xlabel("Amostras");                                 % Titulo eixo x
-ylabel("Amplitude");                                % Titulo eixo y
-grid on                                             % Grid habilitado
-
-% Segundo Grafico (Saída y(i))
-subplot(2,2,2);
-plot(t,y,'r','LineWidth',1)                                             % Plot da saida real
-title("Saida");                                     % Titulo do grafico
-xlabel("Amostras");                                 % Titulo eixo x
-ylabel("Amplitude");                                % Titulo eixo y
-grid on                                             % Grid habilitado
-
-% Terceiro Grafico (Saída yh(i))
-subplot(2,2,3);
-plot(t, YH, 'gr','LineWidth',1)                                            % Plot da saída do modelo
-title("Saída Modelo ARMAX");                        % Titulo do grafico
-xlabel("Amostras");                                 % Titulo eixo x
-ylabel("Amplitude");                                % Titulo eixo y
-grid on                                             % Grid habilitado
-
-% Quarto Grafico (Sobreposição das Saídas)
-subplot(2,2,4);
-plot(t,y,'r','LineWidth',2);                       % Plot da saída real
-hold on                                             % Habilita a Sobreposição
-plot(t, YH, 'gr','LineWidth',0.5);                 % Plot da saída do modelo
-title("Sobreposição das Saídas Real e do Modelo");  % Titulo do grafico
-xlabel("Amostras");                                 % Titulo eixo x
-ylabel("Amplitude");                                % Titulo eixo y
-grid on                                             % Grid habilitado
-
-DAT = iddata(YH,u,Ts);
-SYS = tf(DAT.y',DAT.u');

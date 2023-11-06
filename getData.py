@@ -1,3 +1,13 @@
+# -*- coding: utf-8 -*-
+
+"""
+Universidade Tecnológica Federal do Paraná - UTFPR-CT 2023
+Trabalho de Conclusão de Curso - TCC02
+Aluno : Daniel Souza Soares 
+Orientador: Victor Frencl ; Coorientador: Alexandre Tuoto. 
+Código para Sintonia de PID - Planta Didática de Vazão e pH.
+""" 
+# Importando as bibliotecas para as funções no Python.
 
 import Adafruit_ADS1x15 as serial
 import RPi.GPIO as gpio
@@ -78,6 +88,7 @@ for line in lines :
 
 control.close()
 
+# Caso o usuário queira Ver o que está sendo printado
 #print(intensity)
 #print(waitTime)
 
@@ -124,6 +135,7 @@ for dados in data_list:
     writeData(file, dados)
 
 file.close()
+# Ordem dos vetores salvos no arquivo "output.csv"
 #[timestamp, sampleTime, ADC_A3, vazao(%), inversor(%)]
 print("Escrita Finalizada")
 
